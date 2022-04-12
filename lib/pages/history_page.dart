@@ -56,7 +56,10 @@ class HistoryBottomSheet {
                   ),
                   const Spacer(),
                   IconButton(
-                      onPressed: () {},
+                      onPressed: () {
+                        Navigator.push(context,
+                            MaterialPageRoute(builder: (context) => WebViewPage(url: link)));
+                      },
                       icon:
                           const Icon(Icons.arrow_forward_ios_rounded, size: 13))
                 ],

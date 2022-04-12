@@ -36,6 +36,15 @@ class _ScanPageState extends State<ScanPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('Scanner'),
+        centerTitle: true,
+        backgroundColor: const Color(0xFFF28022),
+        elevation: 1,
+        leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: (){
+          Navigator.pop(context);
+        }),
+      ),
       body: Stack(
         children: [
           _buildQrView(),
@@ -74,7 +83,8 @@ class _ScanPageState extends State<ScanPage> {
     _controller = controller;
 
     _controller?.scannedDataStream.listen((scanData) {
-      _controller?.pauseCamera();
+      //_controller?.pauseCamera();
+      _controller?.dispose();
       widget.onScanner(scanData.code);
       Navigator.pop(context);
     });

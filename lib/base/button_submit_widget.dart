@@ -34,7 +34,8 @@ class ButtonSubmitWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 40,
+      height: height ?? 40,
+      width: width,
       padding: EdgeInsets.symmetric(
           horizontal: paddingHorizontal ?? 0, vertical: paddingVertical ?? 0),
       margin: EdgeInsets.symmetric(

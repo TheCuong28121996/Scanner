@@ -2,7 +2,9 @@
     package="eton.scanner.mobile">
 
     <uses-permission android:name="android.permission.INTERNET" />
-   <application
+    <uses-permission android:name="android.permission.SEND_SMS"/>
+
+    <application
         android:label="mobile"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">

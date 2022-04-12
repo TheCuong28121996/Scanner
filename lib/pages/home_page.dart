@@ -14,8 +14,10 @@ import '../base/base_dialog.dart';
 import '../base/button_submit_widget.dart';
 import '../logs/logger_interceptor.dart';
 import '../model/create_bill_model.dart';
+import '../prefs_util.dart';
 import 'add_product.dart';
 import 'confirm_page.dart';
+import 'history_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -135,7 +137,21 @@ class _HomePageState extends State<HomePage> {
         CreateBillModel createBillModel =
             CreateBillModel.fromJson(response.data);
         _showMsg('Tạo đơn thành công', Colors.green);
-        _sendSMS(user.phone, createBillModel.nid?[0].value);
+        String _msg =
+            'https://stg-demo-da.eton.vn/node/${createBillModel.nid?[0].value}';
+
+        List<String>? _history = PrefsUtil.getStringList('HISTORY');
+        if (_history == null) {
+          PrefsUtil.putStringList('HISTORY', [_msg]);
+        } else {
+          _history.add(_msg);
+          PrefsUtil.clear();
+          PrefsUtil.putStringList('HISTORY', _history);
+        }
+        _sendSMS(user.phone, _msg);
+        setState(() {
+          _products.clear();
+        });
       } else {
         _showMsg('Tạo đơn thất bại', Colors.red);
       }
@@ -153,10 +169,10 @@ class _HomePageState extends State<HomePage> {
     return text.replaceAll(RegExp(r'<[^>]*>|&[^;]+;'), '');
   }
 
-  static Future<void> _sendSMS(String number, int? msg) async {
+  static Future<void> _sendSMS(String number, String msg) async {
     _channel.invokeMethod('send_sms', <String, String?>{
       'phoneNumber': number,
-      'mgs': 'https://stg-demo-da.eton.vn/node/$msg',
+      'mgs': msg,
     });
   }
 
@@ -256,6 +272,17 @@ class _HomePageState extends State<HomePage> {
               Navigator.pop(context);
             }),
         actions: [
+          GestureDetector(
+            child: const Icon(Icons.history),
+            onTap: () {
+              List<String>? _history = PrefsUtil.getStringList('HISTORY');
+              if (_history != null && _history.isNotEmpty) {
+                HistoryBottomSheet().show(context: context, history: _history);
+              } else {
+                _showMsg('Chưa có lịch sử đơn hàng.', Colors.red);
+              }
+            },
+          ),
           IconButton(
               onPressed: () {
                 Navigator.push(
@@ -265,7 +292,7 @@ class _HomePageState extends State<HomePage> {
                               _getInfoBarcode(value);
                             })));
               },
-              icon: const Icon(Icons.qr_code_scanner))
+              icon: const Icon(Icons.qr_code_scanner)),
         ],
       ),
       floatingActionButton: Padding(

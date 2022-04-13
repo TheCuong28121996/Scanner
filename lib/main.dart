@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'pages/splash/splash_page.dart';
 import 'pages/start_page.dart';
 import 'prefs_util.dart';
+import 'routers/custom_router.dart';
 
 void main() async{
   Widget app = await initializeApp();
@@ -21,7 +23,8 @@ class MyApp extends StatelessWidget {
     return const MaterialApp(
       title: 'Eton Scanner',
       debugShowCheckedModeBanner: false,
-      home: StartPage(),
+      onGenerateRoute: CustomRouter.allRoutes,
+      initialRoute: SplashPage.routeName,
     );
   }
 }

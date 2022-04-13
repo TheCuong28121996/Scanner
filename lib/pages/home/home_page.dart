@@ -1,23 +1,13 @@
-import 'dart:convert';
-import 'dart:io';
-import 'dart:math';
-
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:mobile/model/confirm_user.dart';
 import 'package:mobile/model/product_model.dart';
-import 'package:mobile/pages/scanner_page.dart';
-import 'package:dio/dio.dart';
-import 'package:fluttertoast/fluttertoast.dart';
-import 'package:intl/intl.dart';
-import '../base/base_dialog.dart';
-import '../base/button_submit_widget.dart';
-import '../logs/logger_interceptor.dart';
-import '../model/create_bill_model.dart';
-import '../prefs_util.dart';
-import 'add_product.dart';
-import 'confirm_page.dart';
-import 'history_page.dart';
+import 'package:mobile/widgets/scanner_page.dart';
+import '../../base/base_bloc.dart';
+import '../../base/base_dialog.dart';
+import '../../widgets/button_submit_widget.dart';
+import '../../widgets/add_product.dart';
+import '../confirm_page.dart';
+import 'home_bloc.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -28,24 +18,12 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final List<TextEditingController> _controllers = [];
-  final List<ProductModel> _products = [];
-  late Dio _dio;
-  static const MethodChannel _channel = MethodChannel('open_settings');
+  late HomeBloc _bloc;
 
   @override
   void initState() {
     super.initState();
-    final options = BaseOptions(
-      baseUrl: 'https://stg-demo-da.eton.vn',
-      connectTimeout: 30000,
-      receiveTimeout: 30000,
-      headers: {},
-      contentType: 'application/json',
-      responseType: ResponseType.json,
-    );
-
-    _dio = Dio(options);
-    _dio.interceptors.add(LoggerInterceptor());
+    _bloc = BlocProvider.of<HomeBloc>(context);
   }
 
   @override
@@ -56,153 +34,8 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  Future<void> _getInfoBarcode(String? barCode) async {
-    if (barCode != null && barCode.isNotEmpty) {
-      try {
-        Response response = await _dio.get('/rest/products/$barCode');
-
-        if (response.statusCode == HttpStatus.ok ||
-            response.statusCode == HttpStatus.created) {
-          List<ProductModel> _listData = (response.data as List)
-              .map((x) => ProductModel.fromJson(x))
-              .toList();
-
-          if (_listData.isEmpty) {
-            _showMsg('Không tìm thấy thông tin Barcode', Colors.red);
-          } else {
-            if (_products.isNotEmpty) {
-              for (final item in _listData) {
-                int _index = _products
-                    .indexWhere((element) => element.barCode == item.barCode);
-                if (_index != -1) {
-                  int _currentQty = _products[_index].qty += 1;
-                  _controllers[_index].text = '$_currentQty';
-                } else {
-                  _products.add(item);
-                }
-              }
-            } else {
-              _products.addAll(_listData);
-            }
-          }
-        }
-
-        setState(() {});
-      } catch (error, stacktrace) {
-        throw Exception("Exception occured: $error stackTrace: $stacktrace");
-      }
-    } else {
-      _showMsg('Barcode không hợp lệ.', Colors.red);
-    }
-  }
-
-  Future<void> _getToken(ConfirmUser user) async {
-    try {
-      Response response = await _dio.get('/session/token');
-
-      if (response.statusCode == HttpStatus.ok ||
-          response.statusCode == HttpStatus.created) {
-        _createBill(response.data, user);
-      }
-    } catch (error, stacktrace) {
-      throw Exception("Exception occured: $error stackTrace: $stacktrace");
-    }
-  }
-
-  Future<void> _createBill(String? token, ConfirmUser user) async {
-    String _token = token ?? 'wNH9mb9KzMhS2D9nHGRFly5vb_H27bnwNsohTjQJnLI';
-    _dio.options.headers = {'X-CSRF-Token': _token};
-
-    final _listProducts = [];
-    for (final item in _products) {
-      _listProducts.add({"value": item.body});
-    }
-
-    try {
-      Response response = await _dio.post('/node?_format=json', data: {
-        "type": [
-          {"target_id": "demo_bill"}
-        ],
-        "title": [
-          {
-            "value":
-                "Bill ${Random().nextInt(100)} create by ${user.name} - ${user.phone} - ${getNowDateMs()}"
-          }
-        ],
-        "body": jsonEncode(_listProducts)
-      });
-
-      if (response.statusCode == HttpStatus.ok ||
-          response.statusCode == HttpStatus.created) {
-        CreateBillModel createBillModel =
-            CreateBillModel.fromJson(response.data);
-        _showMsg('Tạo đơn thành công', Colors.green);
-        String _msg =
-            'https://stg-demo-da.eton.vn/node/${createBillModel.nid?[0].value}';
-
-        List<String>? _history = PrefsUtil.getStringList('HISTORY');
-        if (_history == null) {
-          PrefsUtil.putStringList('HISTORY', [_msg]);
-        } else {
-          _history.add(_msg);
-          PrefsUtil.clear();
-          PrefsUtil.putStringList('HISTORY', _history);
-        }
-        _sendSMS(user.phone, _msg);
-        setState(() {
-          _products.clear();
-        });
-      } else {
-        _showMsg('Tạo đơn thất bại', Colors.red);
-      }
-    } catch (error, stacktrace) {
-      _showMsg('Tạo đơn thất bại', Colors.red);
-      throw Exception("Exception occured: $error stackTrace: $stacktrace");
-    }
-  }
-
-  static int getNowDateMs() {
-    return DateTime.now().millisecondsSinceEpoch;
-  }
-
   static String _stripHtmlIfNeeded(String text) {
     return text.replaceAll(RegExp(r'<[^>]*>|&[^;]+;'), '');
-  }
-
-  static Future<void> _sendSMS(String number, String msg) async {
-    _channel.invokeMethod('send_sms', <String, String?>{
-      'phoneNumber': number,
-      'mgs': msg,
-    });
-  }
-
-  String _getTotal() {
-    int _totalCost = 0;
-    if (_products.isNotEmpty) {
-      for (final item in _products) {
-        String? _text = item.priceNumber?.replaceAll('.', '');
-
-        int value = int.parse(_text ?? '0');
-        _totalCost = _totalCost + value * item.qty;
-      }
-    }
-    return getCurrencyText(_totalCost);
-  }
-
-  static String getCurrencyText(dynamic? money) {
-    return NumberFormat.currency(locale: 'vi', name: 'đ', decimalDigits: 0)
-        .format(money);
-  }
-
-  void _showMsg(String msg, Color color) {
-    Fluttertoast.showToast(
-        msg: msg,
-        toastLength: Toast.LENGTH_SHORT,
-        gravity: ToastGravity.CENTER,
-        timeInSecForIosWeb: 1,
-        backgroundColor: color,
-        textColor: Colors.white,
-        fontSize: 16.0);
   }
 
   void _showDialogConfirm(ConfirmUser user) {
@@ -244,7 +77,7 @@ class _HomePageState extends State<HomePage> {
                           titleSize: 14,
                           onPressed: () {
                             Navigator.pop(context);
-                            _getToken(user);
+                            _bloc.createBill(user);
                           },
                           marginHorizontal: 6,
                           colorDefaultText: Colors.white),
@@ -262,79 +95,57 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     Size _size = MediaQuery.of(context).size;
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text('Danh sách sản phẩm'),
         centerTitle: true,
         backgroundColor: const Color(0xFFF28022),
-        leading: IconButton(
-            icon: const Icon(Icons.arrow_back),
-            onPressed: () {
-              Navigator.pop(context);
-            }),
         actions: [
-          GestureDetector(
-            child: const Icon(Icons.history),
-            onTap: () {
-              List<String>? _history = PrefsUtil.getStringList('HISTORY');
-              if (_history != null && _history.isNotEmpty) {
-                HistoryBottomSheet().show(context: context, history: _history);
-              } else {
-                _showMsg('Chưa có lịch sử đơn hàng.', Colors.red);
-              }
-            },
-          ),
           IconButton(
               onPressed: () {
-                Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => ScanPage(onScanner: (value) {
-                              _getInfoBarcode(value);
-                            })));
+                AddProductBottomSheet().show(
+                    context: context,
+                    onBack: (value) {
+                      _bloc.addProduct(value);
+                    });
               },
-              icon: const Icon(Icons.qr_code_scanner)),
+              icon: const Icon(Icons.add_shopping_cart)),
         ],
       ),
       floatingActionButton: Padding(
         padding: const EdgeInsets.only(bottom: 50),
         child: FloatingActionButton(
           onPressed: () {
-            AddProductBottomSheet().show(
-                context: context,
-                onBack: (value) {
-                  if (_products.isNotEmpty) {
-                    int _index = _products.indexWhere(
-                        (element) => element.barCode == value.barCode);
-
-                    if (_index != -1) {
-                      int _currentQty = _products[_index].qty += 1;
-                      _controllers[_index].text = '$_currentQty';
-                    } else {
-                      _products.add(value);
-                    }
-                  } else {
-                    _products.add(value);
-                  }
-
-                  setState(() {});
-                });
+            Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (context) => ScanPage(onScanner: (value) {
+                          _bloc.getInfoBarcode(value);
+                        })));
           },
-          child: const Icon(Icons.add),
+          child: const Icon(Icons.qr_code_scanner),
           backgroundColor: const Color(0xFFF28022),
         ),
       ),
       body: SizedBox(
         width: _size.width,
         height: _size.height,
-        child: Stack(
-          children: [
-            _products.isEmpty ? _noItemWidget() : _listItem(),
-            Positioned(
-              child: _submitWidget(_size),
-              bottom: 0,
-            ),
-          ],
-        ),
+        child: StreamBuilder<List<ProductModel>>(
+            initialData: const [],
+            stream: _bloc.productStream,
+            builder: (context, snapshot) {
+              return Stack(
+                children: [
+                  (snapshot.data == null || snapshot.data!.isEmpty)
+                      ? _noItemWidget()
+                      : _listItem(snapshot.data!),
+                  Positioned(
+                    child: _submitWidget(_size, snapshot.data),
+                    bottom: 0,
+                  )
+                ],
+              );
+            }),
       ),
     );
   }
@@ -342,14 +153,14 @@ class _HomePageState extends State<HomePage> {
   Widget _noItemWidget() => const Center(
       child: Text('Chưa có sản phẩm', style: TextStyle(fontSize: 18)));
 
-  Widget _listItem() {
+  Widget _listItem(List<ProductModel> product) {
     return ListView.separated(
         separatorBuilder: (context, index) => const Divider(),
         padding: const EdgeInsets.only(top: 8, bottom: 110),
         itemBuilder: (context, index) {
           _controllers.add(TextEditingController());
-          _controllers[index].text = '${_products[index].qty}';
-          ProductModel _data = _products[index];
+          _controllers[index].text = '${product[index].qty}';
+          ProductModel _data = product[index];
           return Container(
               padding: const EdgeInsets.all(8),
               child: Column(
@@ -392,29 +203,25 @@ class _HomePageState extends State<HomePage> {
                           ],
                         ),
                       ),
-                      _increaseDecreaseWidget(index)
+                      _increaseDecreaseWidget(index, _data)
                     ],
                   ),
                 ],
               ));
         },
-        itemCount: _products.length);
+        itemCount: product.length);
   }
 
-  Widget _increaseDecreaseWidget(int index) {
-    ProductModel _productModel = _products[index];
+  Widget _increaseDecreaseWidget(int index, ProductModel data) {
     TextEditingController _controller = _controllers[index];
     return Row(
       children: [
         IconButton(
           icon: Icon(Icons.remove_circle,
-              color: _productModel.qty > 0 ? const Color(0xFFF28022) : null),
+              color: data.qty > 0 ? const Color(0xFFF28022) : null),
           onPressed: () {
-            if (0 < _productModel.qty) {
-              setState(() {
-                _productModel.qty -= 1;
-                _controller.text = '${_productModel.qty}';
-              });
+            if (0 < data.qty) {
+              _bloc.decreaseQty(index);
             }
           },
         ),
@@ -425,6 +232,9 @@ class _HomePageState extends State<HomePage> {
               controller: _controller,
               textAlign: TextAlign.center,
               keyboardType: TextInputType.number,
+              onChanged: (value) {
+                _bloc.changeQty(index, int.parse(value));
+              },
               decoration: InputDecoration(
                 contentPadding: const EdgeInsets.symmetric(horizontal: 10),
                 hintStyle: const TextStyle(fontSize: 13),
@@ -447,10 +257,7 @@ class _HomePageState extends State<HomePage> {
         IconButton(
           icon: const Icon(Icons.add_circle_outlined, color: Color(0xFFF28022)),
           onPressed: () {
-            setState(() {
-              _productModel.qty += 1;
-              _controller.text = '${_productModel.qty}';
-            });
+            _bloc.increaseQty(index);
           },
         ),
         IconButton(
@@ -458,17 +265,15 @@ class _HomePageState extends State<HomePage> {
           constraints: const BoxConstraints(),
           icon: const Icon(Icons.delete, color: Color(0xFFF28022)),
           onPressed: () {
-            setState(() {
-              _products.removeAt(index);
-              _controllers.removeAt(index);
-            });
+            _controllers.removeAt(index);
+            _bloc.remove(index);
           },
         ),
       ],
     );
   }
 
-  Widget _submitWidget(Size size) => Container(
+  Widget _submitWidget(Size size, List<ProductModel>? products) => Container(
         width: size.width,
         color: const Color(0xFFFFF1E5),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
@@ -480,7 +285,7 @@ class _HomePageState extends State<HomePage> {
                 children: [
                   const Text('Tổng tiền:', style: TextStyle(fontSize: 16)),
                   const SizedBox(height: 3),
-                  Text(_getTotal(),
+                  Text(_bloc.getTotal(),
                       style: const TextStyle(
                           fontSize: 18,
                           color: Colors.red,
@@ -490,14 +295,14 @@ class _HomePageState extends State<HomePage> {
             ),
             ElevatedButton(
               onPressed: () {
-                if (_products.isNotEmpty) {
+                if (products != null && products.isNotEmpty) {
                   ConfirmBottomSheet().show(
                       context: context,
                       onBack: (value) {
                         _showDialogConfirm(value);
                       });
                 } else {
-                  _showMsg('Chưa có sản phẩm', Colors.red);
+                  _bloc.showMsgFail('Chưa có sản phẩm');
                 }
               },
               child: const Text('XÁC NHẬN'),

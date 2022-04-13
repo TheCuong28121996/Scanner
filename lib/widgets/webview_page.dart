@@ -1,17 +1,21 @@
 import 'dart:io';
+import 'package:mobile/routers/screen_arguments.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 import 'package:flutter/material.dart';
 
 class WebViewPage extends StatefulWidget {
-  const WebViewPage({Key? key, required this.url}) : super(key: key);
-  final String url;
+  const WebViewPage({Key? key, required this.arguments}) : super(key: key);
+  final ScreenArguments arguments;
+  static const routeName = '/WebViewPage';
 
   @override
   State<WebViewPage> createState() => _WebViewPageState();
 }
 
 class _WebViewPageState extends State<WebViewPage> {
+  bool isLoading = true;
+
   @override
   void initState() {
     super.initState();
@@ -20,7 +24,6 @@ class _WebViewPageState extends State<WebViewPage> {
 
   @override
   Widget build(BuildContext context) {
-    print(widget.url);
     return Scaffold(
       appBar: AppBar(
         centerTitle: true,
@@ -32,8 +35,23 @@ class _WebViewPageState extends State<WebViewPage> {
               Navigator.pop(context);
             }),
       ),
-      body: WebView(
-        initialUrl: widget.url,
+      body: Stack(
+        children: [
+          WebView(
+            initialUrl: widget.arguments.arg1,
+            onPageFinished: (finish) {
+              setState(() {
+                isLoading = false;
+              });
+            },
+          ),
+          Visibility(
+            visible: isLoading,
+            child: const Center(
+              child: CircularProgressIndicator(color: Color(0xFFF28022)),
+            ),
+          )
+        ],
       ),
     );
   }

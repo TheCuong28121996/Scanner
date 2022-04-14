@@ -1,57 +1,24 @@
-import 'dart:io';
-
 import 'package:mobile/base/base_bloc.dart';
-
-import '../../logs/logger_interceptor.dart';
-import '../../model/order_model.dart';
 import 'package:rxdart/rxdart.dart';
-import 'package:dio/dio.dart';
 
+import '../../model/create_bill_model.dart';
 import '../../prefs_util.dart';
 
 class HistoryBloc extends BaseBloc {
-  late Dio _dio;
-  final _ordersController = BehaviorSubject<List<OrderModel>>();
+  final _historyController = BehaviorSubject<List<CreateBillModel>?>();
 
-  Stream<List<OrderModel>> get ordersStream => _ordersController.stream;
-
-  HistoryBloc() {
-    String? _token = PrefsUtil.getString('TOKEN');
-
-    final options = BaseOptions(
-      baseUrl: 'https://stg-demo-da.eton.vn',
-      connectTimeout: 30000,
-      receiveTimeout: 30000,
-      headers: {'X-CSRF-Token': _token},
-      contentType: 'application/json',
-      responseType: ResponseType.json,
-    );
-
-    _dio = Dio(options);
-    _dio.interceptors.add(LoggerInterceptor());
-  }
+  Stream<List<CreateBillModel>?> get historyStream => _historyController.stream;
 
   Future<void> getHistory() async {
-    showLoading();
-    try {
-      Response response = await _dio.get('/api/commerce/orders/list');
-      if (response.statusCode == HttpStatus.ok ||
-          response.statusCode == HttpStatus.created) {
-        List<OrderModel> _listData =
-            (response.data as List).map((x) => OrderModel.fromJson(x)).toList();
+    List<CreateBillModel>? _history =
+        PrefsUtil.getObjList('HISTORY', (v) => CreateBillModel.fromJson(v));
 
-        _ordersController.sink.add(_listData);
-      }
-      hiddenLoading();
-    } catch (error, stacktrace) {
-      hiddenLoading();
-      throw Exception("Exception occured: $error stackTrace: $stacktrace");
-    }
+    _historyController.sink.add(_history);
   }
 
   @override
   void dispose() {
     super.dispose();
-    _ordersController.close();
+    _historyController.close();
   }
 }

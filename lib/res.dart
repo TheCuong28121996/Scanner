@@ -9,6 +9,7 @@ class AssetImages{
   static const ICON_NAVI_HOME = 'assets/svg/ic_navigation_home.svg';
   static const ICON_NAVI_MENU = 'assets/svg/ic_navigation_menu.svg';
   static const ICON_MENU_LOGOUT = 'assets/svg/ic_menu_logout.svg';
+  static const ICON_MENU_HISTORY = 'assets/svg/ic_navigation_history.svg';
 
   static const IMG_PLACE_HOLDER = 'assets/png/img_place_holder.jpeg';
 }

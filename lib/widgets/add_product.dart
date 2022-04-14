@@ -25,7 +25,11 @@ class AddProductBottomSheet {
   final FocusNode _focusNodeSKU = FocusNode();
   final FocusNode _focusNodePrice = FocusNode();
 
-  void show({required BuildContext context, required Function(ProductModel) onBack}) {
+  void show({required BuildContext context, required Function(ProductModel) onBack, String? barCode}) {
+    if(barCode != null && barCode.isNotEmpty){
+      _barCodeController.text = barCode;
+    }
+
     BaseBottomSheet().show(
         context: context,
         widget: Column(

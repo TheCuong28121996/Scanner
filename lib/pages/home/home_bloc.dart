@@ -20,8 +20,11 @@ class HomeBloc extends BaseBloc {
   final List<ProductModel> _products = [];
   static const MethodChannel _channel = MethodChannel('open_settings');
   final _productsController = BehaviorSubject<List<ProductModel>>();
+  final _showAddController = BehaviorSubject<String>();
 
   Stream<List<ProductModel>> get productStream => _productsController.stream;
+
+  Stream<String> get showAddStream => _showAddController.stream;
 
   HomeBloc() {
     final options = BaseOptions(
@@ -51,6 +54,7 @@ class HomeBloc extends BaseBloc {
 
           if (_listData.isEmpty) {
             showMsgFail('Không tìm thấy thông tin Barcode');
+            _showAddController.sink.add(barCode);
           } else {
             if (_products.isNotEmpty) {
               for (final item in _listData) {
@@ -94,7 +98,7 @@ class HomeBloc extends BaseBloc {
     _productsController.sink.add(_products);
   }
 
-  void changeQty(int index, int qty){
+  void changeQty(int index, int qty) {
     _products[index].qty = qty;
   }
 
@@ -137,11 +141,6 @@ class HomeBloc extends BaseBloc {
     String? _token = PrefsUtil.getString('TOKEN');
     _dio.options.headers = {'X-CSRF-Token': _token};
 
-    final _listProducts = [];
-    for (final item in _products) {
-      _listProducts.add({"value": item.body});
-    }
-
     try {
       Response response = await _dio.post('/node?_format=json', data: {
         "type": [
@@ -153,28 +152,33 @@ class HomeBloc extends BaseBloc {
                 "Bill ${Random().nextInt(100)} create by ${user.name} - ${user.phone} - ${getNowDateMs()}"
           }
         ],
-        "body": jsonEncode(_listProducts)
+        "body": jsonEncode(_products)
       });
 
       if (response.statusCode == HttpStatus.ok ||
           response.statusCode == HttpStatus.created) {
         CreateBillModel createBillModel =
             CreateBillModel.fromJson(response.data);
+
         showMsgSuccess('Tạo đơn thành công');
 
         String _msg =
             'https://stg-demo-da.eton.vn/node/${createBillModel.nid?[0].value}';
 
-        // List<String>? _history = PrefsUtil.getStringList('HISTORY');
-        // if (_history == null) {
-        //   PrefsUtil.putStringList('HISTORY', [_msg]);
-        // } else {
-        //   _history.add(_msg);
-        //   PrefsUtil.clear();
-        //   PrefsUtil.putStringList('HISTORY', _history);
-        // }
-        Future.delayed(const Duration(seconds: 1), (){
-        _sendSMS(user.phone, _msg);
+        List<CreateBillModel>? _history =
+            PrefsUtil.getObjList('HISTORY', (v) => CreateBillModel.fromJson(v));
+
+        if (_history == null) {
+          List<CreateBillModel> list = [];
+          list.add(createBillModel);
+          PrefsUtil.putObjectList('HISTORY', list);
+        } else {
+          _history.add(createBillModel);
+          PrefsUtil.clear();
+          PrefsUtil.putObjectList('HISTORY', _history);
+        }
+        Future.delayed(const Duration(seconds: 1), () {
+          _sendSMS(user.phone, _msg);
         });
 
         _products.clear();
@@ -205,5 +209,6 @@ class HomeBloc extends BaseBloc {
   void dispose() {
     super.dispose();
     _productsController.close();
+    _showAddController.close();
   }
 }

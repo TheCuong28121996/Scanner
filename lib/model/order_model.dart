@@ -19,7 +19,7 @@ class OrderModel {
       uid: json['uid'],
       mail: json['mail'],
       state: json['state'],
-      totalPrice: json['total_price__number'],
+      totalPrice: json['total_price__number_1'],
       orderItems: (json['order_items'] != null)
           ? List<OrderItem>.from(
               json['order_items'].map((x) => OrderItem.fromJson(x)))

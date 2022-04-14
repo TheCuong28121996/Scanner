@@ -47,13 +47,12 @@ class PrefsUtil {
   }
 
   /// get obj list.
-  static List<T>? getObjList<T>(String key, T Function(Map v) f,
-      {List<T>? defValue = const []}) {
+  static List<T>? getObjList<T>(String key, T Function(Map v) f) {
     List<Map>? dataList = getObjectList(key);
     List<T>? list = dataList?.map((value) {
       return f(value);
     }).toList();
-    return list ?? defValue;
+    return list;
   }
 
   /// get object list.

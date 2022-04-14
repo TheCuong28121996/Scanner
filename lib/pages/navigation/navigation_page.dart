@@ -10,6 +10,9 @@ import '../../widgets/keep_alive_page.dart';
 import '../home/home_bloc.dart';
 import 'package:flutter_svg/svg.dart';
 
+import '../order/order_bloc.dart';
+import '../order/order_page.dart';
+
 class NavigationPage extends StatefulWidget {
   const NavigationPage({Key? key}) : super(key: key);
   static const routeName = '/NavigationPage';
@@ -63,8 +66,9 @@ class _NavigationPageState extends State<NavigationPage> {
     return BottomNavigationBar(
       items: <BottomNavigationBarItem>[
         _navigationBarItem(
-            icon: AssetImages.ICON_NAVI_ORDER, label: 'Đơn hàng'),
-        _navigationBarItem(icon: AssetImages.ICON_NAVI_HOME, label: 'Lịch sử'),
+            icon: AssetImages.ICON_NAVI_ORDER, label: 'Tạo đơn'),
+        _navigationBarItem(icon: AssetImages.ICON_NAVI_HOME, label: 'Đơn hàng'),
+        _navigationBarItem(icon: AssetImages.ICON_MENU_HISTORY, label: 'Lịch sử'),
         _navigationBarItem(icon: AssetImages.ICON_NAVI_MENU, label: 'Chức năng')
       ],
       currentIndex: _selectedIndex,
@@ -84,7 +88,8 @@ class _NavigationPageState extends State<NavigationPage> {
             child: BlocProvider(child: const HomePage(), bloc: HomeBloc())),
         KeepAlivePage(
             child:
-                BlocProvider(child: const HistoryPage(), bloc: HistoryBloc())),
+                BlocProvider(child: const OrderPage(), bloc: OrderBloc())),
+        BlocProvider(child: const HistoryPage(), bloc: HistoryBloc()),
         KeepAlivePage(child: const UserPage()),
       ],
     );

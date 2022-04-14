@@ -24,6 +24,14 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     _bloc = BlocProvider.of<HomeBloc>(context);
+    _bloc.showAddStream.listen((barCode) {
+      AddProductBottomSheet().show(
+          context: context,
+          barCode: barCode,
+          onBack: (value) {
+            _bloc.addProduct(value);
+          });
+    });
   }
 
   @override
@@ -158,9 +166,9 @@ class _HomePageState extends State<HomePage> {
         separatorBuilder: (context, index) => const Divider(),
         padding: const EdgeInsets.only(top: 8, bottom: 110),
         itemBuilder: (context, index) {
-          _controllers.add(TextEditingController());
-          _controllers[index].text = '${product[index].qty}';
           ProductModel _data = product[index];
+          _controllers.add(TextEditingController());
+          _controllers[index].text = '${_data.qty}';
           return Container(
               padding: const EdgeInsets.all(8),
               child: Column(

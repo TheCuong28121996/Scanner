@@ -15,9 +15,9 @@ class LoginPage extends StatefulWidget {
 
 class _LoginPageState extends State<LoginPage> {
   late LoginBloc _bloc;
-  final FocusNode _focusNodePhoneNumber = FocusNode();
+  final FocusNode _focusNodeUserName = FocusNode();
   final FocusNode _focusNodePassword = FocusNode();
-  final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _userNameController = TextEditingController();
   final TextEditingController _passController = TextEditingController();
   bool _passwordVisible = false;
   final _formKeyPhone = GlobalKey<FormState>();
@@ -34,8 +34,8 @@ class _LoginPageState extends State<LoginPage> {
   void dispose() {
     super.dispose();
     _passController.clear();
-    _phoneController.clear();
-    _focusNodePhoneNumber.unfocus();
+    _userNameController.clear();
+    _focusNodeUserName.unfocus();
     _focusNodePassword.unfocus();
   }
 
@@ -52,25 +52,22 @@ class _LoginPageState extends State<LoginPage> {
             const Text('Vui lòng nhập số điện thoại và mât khẩu để đăng nhập.',
                 style: TextStyle(fontSize: 14)),
             _itemPadding(32),
-            const Text('Số điện thoại', style: TextStyle(fontSize: 18)),
+            const Text('Tên tài khoản', style: TextStyle(fontSize: 18)),
             _itemPadding(12),
             _itemInput(
-                hintText: 'Nhập số điện thoại.',
+                hintText: 'Nhập tên tài khoản.',
                 autoFocus: false,
-                focusNode: _focusNodePhoneNumber,
+                focusNode: _focusNodeUserName,
                 obscureText: false,
                 globalKey: _formKeyPhone,
                 onSubmit: (value) {
-                  _focusNodePhoneNumber.unfocus();
+                  _focusNodeUserName.unfocus();
                   _focusNodePassword.requestFocus();
                 },
-                controller: _phoneController,
-                keyboardType: TextInputType.number,
+                controller: _userNameController,
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
-                    return 'Số điện thoại không được để trống';
-                  } else if (value.length != 10 || !regExp.hasMatch(value)) {
-                    return 'Số điện thoại không hợp lệ';
+                    return 'Tên đăng nhập không được để trống';
                   }
                   return null;
                 }),
@@ -108,7 +105,7 @@ class _LoginPageState extends State<LoginPage> {
               onPressed: () {
                 if (_formKeyPhone.currentState!.validate() &&
                     _formKeyPass.currentState!.validate()) {
-                  _bloc.login(_phoneController.text, _passController.text, context);
+                  _bloc.login(_userNameController.text, _passController.text, context);
                 }
               },
               title: 'ĐĂNG NHẬP',
